@@ -1,35 +1,23 @@
 # ClubContentReview
 
-Discourse + 阿里云图文混合审核的落地骨架工程。
+这个仓库是给运维直接部署用的交付仓库，只保留正式交付物和部署说明。
 
-## 目录
-- `test_multimodal.py`：阿里云图文混合 API 直连测试脚本
-- `gateway/app.py`：审核网关（对外提供 `/moderate`）
-- `docs/IMPLEMENTATION.md`：给你自己的实施说明
-- `ops/OPS_TODO.md`：给运维的分步骤清单
-- `plugin_sample/aliyun_moderation_service.rb`：Discourse 插件调用网关示例
-- `scripts/run_gateway.sh`：本地启动网关
-- `scripts/test_gateway.sh`：本地调用网关测试
+## 先看哪里
 
-## 快速开始
-```bash
-cd /Users/lsz/工作/有智时代/ClubContentReview
-source .venv/bin/activate
-export ALIBABA_CLOUD_ACCESS_KEY_ID='你的AK'
-export ALIBABA_CLOUD_ACCESS_KEY_SECRET='你的SK'
-export ALIBABA_CLOUD_REGION_ID='cn-shanghai'
-export ALIBABA_CLOUD_ENDPOINT='green-cip.cn-shanghai.aliyuncs.com'
-./scripts/run_gateway.sh
-```
+1. `docs/deploy/DEPLOYMENT_GUIDE.md`
+2. `deliverables/discourse-aliyun-moderation`
+3. `deliverables/moderation-gateway`
 
-另开终端测试：
-```bash
-cd /Users/lsz/工作/有智时代/ClubContentReview
-./scripts/test_gateway.sh
-```
+## 目录说明
 
-## 三态决策
-- `risk_level=none` -> `PASS`
-- `risk_level=low|medium` -> `REVIEW`
-- `risk_level=high` -> `REJECT`
-- 接口异常 -> `REVIEW`（保守兜底）
+- `deliverables/discourse-aliyun-moderation`：可直接安装到 Discourse 的插件目录
+- `deliverables/moderation-gateway`：可直接部署的审核网关
+- `deliverables/README_HANDOFF.md`：交接说明
+- `docs/deploy/DEPLOYMENT_GUIDE.md`：完整部署教程
+
+## 审核逻辑
+
+- `PASS`：直接发布
+- `REVIEW`：进入 Discourse Review Queue
+- `REJECT`：直接拦截
+- 网关异常：按 `REVIEW` 兜底

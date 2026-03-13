@@ -8,11 +8,15 @@
 
 ---
 
-## A. 交付目录说明（发给运维）
+## A. 交付目录说明
 
-请把这两个目录打包给运维：
+如果运维拿到的是整个仓库，直接使用下面两个目录即可：
 - `deliverables/moderation-gateway`
 - `deliverables/discourse-aliyun-moderation`
+
+如果只单独发文件，也至少要带上：
+- `deliverables/README_HANDOFF.md`
+- `docs/deploy/DEPLOYMENT_GUIDE.md`
 
 ---
 
@@ -163,4 +167,3 @@ docker compose down
 1. 第 1 周：仅启用 PASS/REVIEW（业务侧不执行硬 REJECT）
 2. 第 2 周：观察误杀率后再启用 REJECT
 3. 每日抽样 20 条审核结果做人工复核
-
