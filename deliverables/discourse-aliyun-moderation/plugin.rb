@@ -29,6 +29,14 @@ after_initialize do
 
       true
     end
+
+    def self.profile_enabled_for?(user)
+      return false unless SiteSetting.aliyun_moderation_profile_enabled
+      return false if user.blank? || user.id == Discourse::SYSTEM_USER_ID
+      return false if user.staff?
+
+      true
+    end
   end
 
   DiscourseEvent.on(:before_create_post) do |creator|
@@ -55,6 +63,57 @@ after_initialize do
       ::AliyunModeration::ReviewQueue.enqueue!(creator: creator, result: { decision: 'REVIEW', error: e.message, labels: [], risk_level: 'unknown' })
       creator.errors.add(:base, I18n.t('aliyun_moderation.review_required'))
       raise Discourse::InvalidAccess.new(I18n.t('aliyun_moderation.review_required'))
+    end
+  end
+
+  User.class_eval do
+    validate :aliyun_moderate_profile_text
+
+    def aliyun_moderate_profile_text
+      return unless ::AliyunModeration.profile_enabled_for?(self)
+      return unless new_record? || will_save_change_to_name? || will_save_change_to_username?
+
+      result = ::AliyunModeration::Moderator.moderate_profile_user!(self)
+      case result[:decision]
+      when 'PASS'
+        nil
+      when 'REVIEW'
+        errors.add(:base, I18n.t('aliyun_moderation.profile_review_required'))
+      when 'REJECT'
+        errors.add(:base, I18n.t('aliyun_moderation.profile_rejected'))
+      end
+    rescue => e
+      if SiteSetting.aliyun_moderation_fail_safe_mode == 'pass'
+        Rails.logger.warn("[AliyunModeration] profile text fallback pass: #{e.class}: #{e.message}")
+      else
+        errors.add(:base, I18n.t('aliyun_moderation.profile_review_required'))
+      end
+    end
+  end
+
+  UserAvatar.class_eval do
+    validate :aliyun_moderate_custom_avatar
+
+    def aliyun_moderate_custom_avatar
+      return unless custom_upload_id.present?
+      return unless will_save_change_to_custom_upload_id?
+      return unless ::AliyunModeration.profile_enabled_for?(user)
+
+      result = ::AliyunModeration::Moderator.moderate_profile_avatar!(user: user, avatar_upload: custom_upload)
+      case result[:decision]
+      when 'PASS'
+        nil
+      when 'REVIEW'
+        errors.add(:base, I18n.t('aliyun_moderation.profile_avatar_review_required'))
+      when 'REJECT'
+        errors.add(:base, I18n.t('aliyun_moderation.profile_avatar_rejected'))
+      end
+    rescue => e
+      if SiteSetting.aliyun_moderation_fail_safe_mode == 'pass'
+        Rails.logger.warn("[AliyunModeration] avatar fallback pass: #{e.class}: #{e.message}")
+      else
+        errors.add(:base, I18n.t('aliyun_moderation.profile_avatar_review_required'))
+      end
     end
   end
 end

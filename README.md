@@ -17,6 +17,8 @@
 
 ## 审核逻辑
 
+覆盖范围：帖子、回复、用户注册、昵称/用户名修改、头像修改。
+
 - `PASS`：直接发布
 - `REVIEW`：进入 Discourse Review Queue
 - `REJECT`：直接拦截

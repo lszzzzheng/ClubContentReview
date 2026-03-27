@@ -3,7 +3,7 @@
 本文档目标：让运维同事在拿到仓库后，按步骤完成
 1) 审核网关部署
 2) Discourse 插件安装
-3) 联调验收
+3) 帖子+资料审核联调验收
 4) 回滚
 
 ---
@@ -45,6 +45,8 @@ cp .env.example .env
 - `ALIBABA_CLOUD_ACCESS_KEY_SECRET`
 - `ALIBABA_CLOUD_REGION_ID=cn-shanghai`
 - `ALIBABA_CLOUD_ENDPOINT=green-cip-vpc.cn-shanghai.aliyuncs.com`（优先内网）
+- `MODERATION_SERVICE=post_text_image_detection`
+- `MODERATION_PROFILE_SERVICE=profile_text_image_detection`
 
 ### C3. 启动网关
 ```bash
@@ -89,14 +91,15 @@ cd /var/discourse
 ### D4. 配置插件设置
 进入：`Admin -> Settings -> Plugins`，搜索 `aliyun moderation`，配置：
 1. `aliyun_moderation_enabled = true`
-2. `aliyun_moderation_gateway_url = http://<网关内网IP>:8080/moderate`
-3. `aliyun_moderation_timeout_ms = 2000`
-4. `aliyun_moderation_fail_safe_mode = review`
-5. `aliyun_moderation_include_context_posts = 2`
+2. `aliyun_moderation_profile_enabled = true`
+3. `aliyun_moderation_gateway_url = http://<网关内网IP>:8080/moderate`
+4. `aliyun_moderation_timeout_ms = 2000`
+5. `aliyun_moderation_fail_safe_mode = review`
+6. `aliyun_moderation_include_context_posts = 2`
 
 ---
 
-## E. 联调验收步骤
+## E. 联调验收步骤（帖子 + 资料）
 
 ### E1. 正常内容
 发一条普通帖子，期望：直接发布（PASS）。
@@ -114,6 +117,11 @@ cd /opt/moderation-gateway
 docker compose stop
 ```
 再发帖子，期望：进入审核队列（fail-safe=review）。
+
+### E5. 注册与资料审核
+1. 注册新用户（使用正常昵称），期望：可注册成功。
+2. 修改昵称为明显违规内容，期望：保存被阻断并提示审核策略。
+3. 上传明显违规头像，期望：更新被阻断并提示审核策略。
 
 ---
 

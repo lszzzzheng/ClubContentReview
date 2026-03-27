@@ -9,10 +9,23 @@ module ::AliyunModeration
       topic = fetch_topic(creator)
 
       {
+        scene: 'post',
         title: creator.opts[:title].presence || topic&.title.to_s,
         text: raw,
         images: extract_images(raw),
         comments: extract_context_posts(topic)
+      }
+    end
+
+    def self.from_user(user:, avatar_upload: nil)
+      name_text = user.name.presence || user.username.to_s
+      avatar_url = avatar_upload_url(user: user, avatar_upload: avatar_upload)
+
+      {
+        scene: 'profile',
+        text: name_text,
+        images: avatar_url.present? ? [avatar_url] : [],
+        comments: []
       }
     end
 
@@ -40,6 +53,19 @@ module ::AliyunModeration
           postTime: post.created_at.strftime('%Y-%m-%d %H:%M:%S')
         }
       end
+    end
+
+    def self.avatar_upload_url(user:, avatar_upload:)
+      upload = avatar_upload || user.user_avatar&.custom_upload
+      return nil if upload.blank? || upload.url.blank?
+
+      to_absolute_url(upload.url)
+    end
+
+    def self.to_absolute_url(url)
+      return url if url.start_with?('http://', 'https://')
+
+      "#{Discourse.base_url_no_prefix}#{url}"
     end
   end
 end
