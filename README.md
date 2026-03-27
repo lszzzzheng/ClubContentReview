@@ -23,3 +23,12 @@
 - `REVIEW`：进入 Discourse Review Queue
 - `REJECT`：直接拦截
 - 网关异常：按 `REVIEW` 兜底
+
+## 运维最短路径
+
+1. 先读 `docs/deploy/DEPLOYMENT_GUIDE.md`
+2. 部署 `deliverables/moderation-gateway`
+3. 安装 `deliverables/discourse-aliyun-moderation`
+4. 在后台开启：
+- `aliyun_moderation_enabled = true`
+- `aliyun_moderation_profile_enabled = true`

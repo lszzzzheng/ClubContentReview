@@ -25,3 +25,12 @@ Discourse 插件：在创建帖子/回复、用户注册和资料更新时调用
 - 头像更新：`REVIEW` 或 `REJECT` 时阻断更新
 
 网关失败时默认走 REVIEW（可通过设置改为 pass）。
+
+## 快速验证
+
+1. 后台开启：
+- `aliyun_moderation_enabled = true`
+- `aliyun_moderation_profile_enabled = true`
+2. 发一条普通帖子，确认可发布。
+3. 修改昵称为明显违规内容，确认被拦截并出现提示。
+4. 上传明显违规头像，确认被拦截并出现提示。

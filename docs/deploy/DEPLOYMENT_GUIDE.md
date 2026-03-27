@@ -27,6 +27,13 @@
 3. 推荐：Discourse 与网关在同一 VPC 内网互通
 4. 已准备新的 AK/SK（旧泄露密钥必须已删除）
 
+### B1. 上线前 5 分钟检查清单
+1. Git 仓库分支是最新 `main`
+2. `.env` 已填写 AK/SK，且没有把 `.env` 提交到仓库
+3. 网关地址可从 Discourse 主机内网访问
+4. Discourse 后台管理员账号可登录
+5. 已准备回滚方案（可随时关闭 2 个站点开关）
+
 ---
 
 ## C. 部署审核网关（moderation-gateway）
@@ -61,12 +68,25 @@ curl -sS http://127.0.0.1:8080/healthz
 期望返回：`{"ok": true, ...}`。
 
 ### C5. 连通性验证（从 Discourse 机器）
+帖子场景：
 ```bash
 curl -sS -X POST 'http://<网关内网IP>:8080/moderate' \
   -H 'Content-Type: application/json' \
-  -d '{"title":"test","text":"hello","images":[]}'
+  -d '{"scene":"post","title":"test","text":"hello","images":[]}'
+```
+
+资料场景（昵称+头像）：
+```bash
+curl -sS -X POST 'http://<网关内网IP>:8080/moderate' \
+  -H 'Content-Type: application/json' \
+  -d '{"scene":"profile","text":"normal nickname","images":["https://example.com/avatar.jpg"]}'
 ```
 期望返回 JSON，包含 `decision` 字段。
+
+### C6. 决策映射确认
+1. `risk_level=none` -> `PASS`
+2. `risk_level=low|medium` -> `REVIEW`
+3. `risk_level=high` -> `REJECT`
 
 ---
 
@@ -159,10 +179,11 @@ docker compose logs -f
 ## H. 回滚流程（必须预案）
 
 1. 先在 Discourse 后台关闭：`aliyun_moderation_enabled = false`
-2. 若需彻底卸载插件：
+2. 再关闭：`aliyun_moderation_profile_enabled = false`
+3. 若需彻底卸载插件：
 - 删除 `/var/discourse/plugins/discourse-aliyun-moderation`
 - 执行 `./launcher rebuild app`
-3. 网关可保留或停止：
+4. 网关可保留或停止：
 ```bash
 cd /opt/moderation-gateway
 docker compose down
@@ -175,3 +196,12 @@ docker compose down
 1. 第 1 周：仅启用 PASS/REVIEW（业务侧不执行硬 REJECT）
 2. 第 2 周：观察误杀率后再启用 REJECT
 3. 每日抽样 20 条审核结果做人工复核
+
+---
+
+## J. 常见误配（优先排查）
+
+1. `scene` 没传，导致 profile 流量走了帖子模型
+2. `aliyun_moderation_profile_enabled` 没开，资料更新不会触发审核
+3. 网关用公网地址但安全组没放通，表现为超时
+4. 头像 URL 无法公网下载，阿里云侧会返回下载失败或超时
