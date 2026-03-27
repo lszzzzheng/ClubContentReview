@@ -19,6 +19,7 @@ class Settings:
     access_key_secret = os.getenv("ALIBABA_CLOUD_ACCESS_KEY_SECRET", "")
 
     service = os.getenv("MODERATION_SERVICE", "post_text_image_detection")
+    profile_service = os.getenv("MODERATION_PROFILE_SERVICE", "profile_text_image_detection")
     biz_type = os.getenv("MODERATION_BIZ_TYPE", "default")
     poll_interval_seconds = float(os.getenv("MODERATION_POLL_INTERVAL_SECONDS", "2"))
     poll_max_attempts = int(os.getenv("MODERATION_POLL_MAX_ATTEMPTS", "8"))
@@ -72,6 +73,15 @@ def to_service_parameters(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def resolve_service(payload: Dict[str, Any]) -> str:
+    scene = str(payload.get("scene", "")).lower()
+    if scene == "profile":
+        return SETTINGS.profile_service
+    if scene == "post":
+        return SETTINGS.service
+    return str(payload.get("service") or SETTINGS.service)
+
+
 def map_decision(risk_level: str) -> str:
     risk_level = (risk_level or "").lower()
     if risk_level == "none":
@@ -86,10 +96,11 @@ def map_decision(risk_level: str) -> str:
 
 def submit_and_poll(payload: Dict[str, Any]) -> Dict[str, Any]:
     client = build_client()
+    service = resolve_service(payload)
     service_parameters = to_service_parameters(payload)
 
     submit_request = green_models.MultimodalAsyncModerationRequest(
-        service=SETTINGS.service,
+        service=service,
         service_parameters=json.dumps(service_parameters, ensure_ascii=False),
     )
     submit_response = client.multimodal_async_moderation(submit_request).body.to_map()
@@ -118,21 +129,28 @@ def submit_and_poll(payload: Dict[str, Any]) -> Dict[str, Any]:
         "risk_level": risk_level,
         "labels": data.get("MainData", {}).get("Results", []),
         "req_id": data.get("ReqId") or req_id,
+        "service": service,
         "raw": result_body,
     }
 
 
 @app.get("/healthz")
 def healthz():
-    return jsonify({"ok": True, "service": SETTINGS.service})
+    return jsonify(
+        {
+            "ok": True,
+            "service": SETTINGS.service,
+            "profile_service": SETTINGS.profile_service,
+        }
+    )
 
 
 @app.post("/moderate")
 def moderate():
     payload = request.get_json(silent=True) or {}
     required_missing = []
-    if not payload.get("text") and not payload.get("title"):
-        required_missing.append("text or title")
+    if not payload.get("text") and not payload.get("title") and not payload.get("images"):
+        required_missing.append("text/title/images")
     if required_missing:
         return jsonify({"ok": False, "error": f"Missing required field: {', '.join(required_missing)}"}), 400
 
